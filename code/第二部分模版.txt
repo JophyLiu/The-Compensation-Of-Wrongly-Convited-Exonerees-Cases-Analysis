@@ -1,0 +1,159 @@
+***the likelihood_award of previvling compensation between Death_Penalty****;
+goptions reset=all;
+proc sql;
+create table state_award as
+select distinct(Death_Penalty) as Death_Penalty, avg(State_Award) as state_award
+from ps
+group by Death_Penalty;
+proc sql;
+create table civil_award as
+select distinct(Death_Penalty) as Death_Penalty, avg(Award) as civil_award
+from pc
+group by Death_Penalty;
+
+proc sql;
+create table likelihood_award as 
+select a.Death_Penalty,a.state_award,b.civil_award
+from state_award a, civil_award b
+where a.Death_Penalty=b.Death_Penalty;
+run;
+proc print data=likelihood_award;
+run;
+
+*method: contingence table;
+
+proc freq data=ps;
+   tables Death_Penalty*State_Award / chisq;
+run;
+proc freq data=pc;
+tables Death_Penalty*Award/ chisq;
+run;
+
+*method: anova table;
+proc anova data=ps;
+class Death_Penalty;
+model State_Award=Death_Penalty;
+run;
+proc anova data=pc;
+class Death_Penalty;
+model Award=Death_Penalty;
+run;
+
+* time ;
+*/ preprocess the time first;
+
+
+
+goptions reset=all;
+proc sql;
+create table state_award as
+select distinct(Death_Penalty) as Death_Penalty,time, avg(State_Award) as state_award
+from ps
+group by Death_Penalty,time;
+proc sql;
+create table civil_award as
+select distinct(Death_Penalty) as Death_Penalty, time, avg(Award) as civil_award
+from pc
+group by Death_Penalty,time;
+
+proc sql;
+create table likelihood_award as 
+select a.Death_Penalty,a.time, a.state_award,b.civil_award
+from state_award a, civil_award b
+where a.Death_Penalty=b.Death_Penalty and a.time=b.time;
+run;
+proc print data=likelihood_award;
+run;
+proc gplot data= likelihood_award;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("likelihood_award of filling state_award claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot state_award*time=Death_Penalty/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+goptions reset=all;
+proc gplot data= likelihood_award;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("likelihood_award of filling civil_award right claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot civil_award*time=Death_Penalty/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+goptions reset=all;
+proc gplot data= likelihood_award;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("likelihood_award of filling both state_award and civil_award right claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot both_award*time=Death_Penalty/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+proc sort data=ps;
+by Death_Penalty time;
+run;
+proc glm data=ps;
+class time Death_Penalty;
+model State_Award=time|Death_Penalty;
+run;
+proc glm data=pc;
+class time Death_Penalty;
+model Award=time|Death_Penalty;
+run;
+
+proc corr data=ps pearson spearman;
+var Years_Lost State_Award;
+run;
+proc corr data=pc pearson spearman;
+var Years_Lost Award;
+run;
+goptions reset=all;
+goptions reset=all;
+proc logistic data=ps PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class Death_Penalty /param=ref;
+   model State_Award(event='1')= Death_Penalty Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=Death_Penalty) / noobs ;
+run;
+
+proc logistic data=ps descending;
+   model State_Award=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+goptions reset=all;
+proc gplot data=lout;
+plot (State_Award pred lowerCL upperCL)*Years_Lost / overlay;
+run;
+*;
+proc logistic data=pc PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class Death_Penalty /param=ref;
+   model Award(event='1')= Death_Penalty Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=Death_Penalty) / noobs ;
+run;
+proc logistic data=pc descending;
+   model Award=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+goptions reset=all;
+proc gplot data=lout;
+plot (Award pred lowerCL upperCL)*Years_Lost / overlay;
+run;
+*;

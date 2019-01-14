@@ -1,0 +1,53 @@
+proc anova data=q1;
+class Race;
+model amount_per_c=Race;
+run;
+proc anova data=q1;
+class Race;
+model amount_per=Race;
+run;
+goptions reset=all;
+proc sql;
+create table amount_state as
+select distinct(Race) as Race,time, avg(amount_per) as amount_state
+from q1
+group by Race,time;
+proc sql;
+create table amount_civil as
+select distinct(Race) as Race,time, avg(amount_per_c) as amount_civil
+from q1
+group by Race,time;
+proc glm data=q1;
+class time Race;
+model amount_per=time|Race;
+run;
+proc glm data=q1;
+class time Race;
+model amount_per_c=time|Race;
+run;
+proc gplot data= amount_state;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("The Amount of recovering state claim per year")
+order=(0 to 300000 by 20000);
+legend1 label=none value=(tick=1 "Black");
+plot amount_state*time=Race/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+proc gplot data= amount_civil;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("The Amount of recovering civil right per year")
+order=(0 to 300000 by 100000);
+legend1 label=none value=(tick=1 "Black");
+plot amount_civil*time=Race/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;

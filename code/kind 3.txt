@@ -1,0 +1,56 @@
+proc sort data=final out=q1;
+by Sex Exonerated;
+run;
+
+data q1;
+set q1;
+keep Sex Amount_c Exonerated Years_Lost;
+run;
+
+data q1;
+set q1;
+if Amount_c=0 then delete;
+run;
+
+data q1;
+set q1;
+if Amount_c=. then delete;
+run;
+
+data q1;
+set q1;
+if Years_Lost=0 then delete;
+run;
+
+data civil;
+set q1;
+amount_per=Amount_c/Years_Lost;
+run;
+
+*********;
+proc univariate data=civil;
+class Sex;
+var amount_per;
+histogram amount_per; 
+qqplot amount_per;
+run;
+
+proc anova data=civil;
+class Sex;
+model amount_per=Sex;
+run;
+
+proc npar1way data=civil wilcoxon;
+class Sex;
+var amount_per;
+run;
+
+*********************************************************;
+proc corr data=civil pearson spearman;
+var Exonerated amount_c;
+run;
+
+proc glm data=civil;
+class Exonerated Sex;
+model amount_per=Exonerated|Sex;
+run;

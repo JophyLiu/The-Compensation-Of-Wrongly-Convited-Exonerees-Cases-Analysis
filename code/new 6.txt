@@ -1,0 +1,238 @@
+***the likelihood_award of previvling compensation between race****;
+goptions reset=all;
+proc sql;
+create table state_award as
+select distinct(Race) as Race, avg(State_Award) as state_award
+from ps
+group by Race
+proc sql;
+create table civil_award as
+select distinct(Race) as Race, avg(Award) as civil_award
+from pc
+group by Race;
+proc sql;
+create table both as
+select distinct(Race) as Race, avg(both_award) as both_award
+from ps
+group by Race;
+proc sql;
+create table likelihood_award as 
+select a.Race,a.state_award,b.civil_award,c.both_award
+from state_award a, civil_award b,both c
+where a.Race=b.Race and a.Race=c.Race;
+run;
+proc print data=likelihood_award;
+run;
+
+data total_award;
+length Race $ 10;
+length Method $ 5;
+input Race$ likelihood_award Method$;
+datalines;
+Asian	0.53846	state_award
+Black	0.66232	state_award
+Caucasian	0.39419	state_award
+Hispanic	0.44144	state_award
+Native_American	0.33333	state_award
+Other	0.55556	state_award
+Asian	0.30769	civil_award
+Black	0.2595	civil_award
+Caucasian	0.20194	civil_award
+Hispanic	0.24324	civil_award
+Native_American	0.08333	civil_award
+Other	0.11111	civil_award
+Asian	0	both_award
+Black	0.14875	both_award
+Caucasian	0.05394	both_award
+Hispanic	0.13964	both_award
+Native_American	0	both_award
+Other	0	both_award
+;
+run;
+/* Set the graphics environment */                                                                                                      
+goptions reset=all cback=white border htitle=12pt htext=10pt;                                                                                                                                                                                                                  
+/* Define the title */                                                                                                                  
+title 'The likelihood_award of prevaling state_award or civil_award right claim';                                                                                                                                                                                                                                
+/* Define the axis characteristics */                                                                                                   
+axis1 value=none label=none;                                                                                                          
+axis2 label=(angle=90 "likelihood_award");                                                                                                                                                                                                                                       
+/* Define the legend options */                                                                                                         
+legend1 frame;                                                                                                                                                                                                                                                              
+/* Generate the graph */                                                                                                                
+proc gchart data=total_award;                                                                                                       
+   vbar Race / subgroup=Race group=method avgvar=likelihood_award                                                                           
+                  legend=legend1 space=0 gspace=4                                                                                        
+                  maxis=axis1 raxis=axis2 gaxis=axis3 inside=avg;                                                                                   
+run;                                                                                                                                    
+quit;
+*method: contingence table;
+
+proc freq data=ps;
+   tables Race*State_Award / chisq;
+run;
+proc freq data=pc;
+tables Race*Award/ chisq;
+run;
+proc freq data=ps;
+tables Race*both_award/ chisq;
+run;
+*method: anova table;
+proc anova data=ps;
+class Race;
+model State_Award=Race;
+run;
+proc anova data=pc;
+class Race;
+model Award=Race;
+run;
+proc anova data=ps;
+class Race;
+model both_award=Race;
+run;
+* time ;
+*/ preprocess the time first;
+
+
+
+goptions reset=all;
+proc sql;
+create table state_award as
+select distinct(Race) as Race,time, avg(State_Award) as state_award
+from ps
+group by Race,time;
+proc sql;
+create table civil_award as
+select distinct(Race) as Race, time, avg(Award) as civil_award
+from pc
+group by Race,time;
+proc sql;
+create table both as
+select distinct(Race) as Race,time, avg(both_award) as both_award
+from ps
+group by Race,time;
+proc sql;
+create table likelihood_award as 
+select a.Race,a.time, a.state_award,b.civil_award,c.both_award
+from state_award a, civil_award b,both c
+where a.Race=b.Race and a.Race=c.Race and a.time=b.time and a.time=c.time;
+run;
+proc print data=likelihood_award;
+run;
+proc gplot data= likelihood_award;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("likelihood_award of filling state_award claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot state_award*time=Race/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+goptions reset=all;
+proc gplot data= likelihood_award;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("likelihood_award of filling civil_award right claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot civil_award*time=Race/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+goptions reset=all;
+proc gplot data= likelihood_award;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("likelihood_award of filling both state_award and civil_award right claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot both_award*time=Race/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+proc sort data=ps;
+by Race time;
+run;
+proc glm data=ps;
+class time Race;
+model State_Award=time|Race;
+run;
+proc glm data=pc;
+class time Race;
+model Award=time|Race;
+run;
+proc glm data=ps;
+class time Race;
+model both_award=time|Race;
+run;
+*/trend;
+proc freq data=ps;
+ tables Race*time*State_Award / trend measures cl;
+   test smdrc;
+   exact trend /maxtime=120;
+run;
+*/;
+proc corr data=ps pearson spearman;
+var Years_Lost State_Award;
+run;
+proc corr data=pc pearson spearman;
+var Years_Lost Award;
+run;
+proc corr data=ps pearson spearman;
+var Years_Lost both_award;
+run;
+proc logistic data=ps PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class Race /param=ref;
+   model State_Award(event='1')= Race Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=Race) / noobs ;
+run;
+
+proc logistic data=ps descending;
+   model State_Award=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+goptions reset=all;
+proc gplot data=lout;
+plot (State_Award pred lowerCL upperCL)*Years_Lost / overlay;
+run;
+*;
+proc logistic data=pc PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class Race /param=ref;
+   model Award(event='1')= Race Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=Race) / noobs ;
+run;
+proc logistic data=pc descending;
+   model Award=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+goptions reset=all;
+proc gplot data=lout;
+plot (Award pred lowerCL upperCL)*Years_Lost / overlay;
+run;
+*;
+proc logistic data=ps PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class Race /param=ref;
+   model both_award(event='1')= Race Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=Race) / noobs ;
+run;
+
+proc logistic data=ps descending;
+   model both_award=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+goptions reset=all;
+proc gplot data=lout;
+plot (both_award pred lowerCL upperCL)*Years_Lost / overlay;
+run;

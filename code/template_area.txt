@@ -1,0 +1,274 @@
+area
+goptions reset=all;
+proc sql;
+create table state_claim as
+select distinct(area) as area, avg(State_Claim_Made) as state
+from fs
+group by area;
+
+proc sql;
+create table civil_claim as
+select distinct(area) as area, avg(Non_Statutory_Case_Filed) as civil
+from fc
+group by area;
+
+proc sql;
+create table both_claim as
+select distinct(area) as area, avg(both_claim) as both_claim
+from fs
+group by area;
+
+proc sql;
+create table likelihood_claim as 
+select a.area,a.state,b.civil,c.both_claim
+from state_claim a, civil_claim b,both_claim c
+where a.area=b.area and a.area=c.area;
+run;
+
+proc print data=likelihood_claim;
+run;
+
+data total_claim;
+length area $ 10;
+length Method $ 5;
+input area$ Likelihood Method$;
+datalines;
+Asian	0.30769	state
+Black	0.50271	state
+Caucasian	0.31397	state
+Hispanic	0.38288	state
+Native_American	0.33333	state
+Other	0.22222	state
+Asian	0.30769	civil
+Black	0.46254	civil
+Caucasian	0.37068	civil
+Hispanic	0.41441	civil
+Native_American	0.41667	civil
+Other	0.11111	civil
+Asian	0.07692	both_claim
+Black	0.29099	both_claim
+Caucasian	0.12725	both_claim
+Hispanic	0.22072	both_claim
+Native_American	0	both_claim
+Other	0.11111	both_claim
+;
+run;
+
+/* Set the graphics environment */                                                                                                      
+goptions reset=all cback=white border htitle=12pt htext=10pt;                                                                           
+                                                                                                                                        
+/* Define the title */                                                                                                                  
+title 'The likelihood of filling state or civil right claim';                                                                                         
+                                                                                                                                        
+/* Define the axis characteristics */                                                                                                   
+axis1 value=none label=none;                                                                                                          
+axis2 label=(angle=90 "Likelihood");                                                                                                
+                                                                                                                   
+                                                                                                                                        
+/* Define the legend options */                                                                                                         
+legend1 frame;                                                                                                                        
+                                                                                                                                        
+/* Generate the graph */                                                                                                                
+proc gchart data=total_claim;                                                                                                       
+   vbar area / subgroup=area group=method sumvar=Likelihood                                                                           
+                  legend=legend1 space=0 gspace=4                                                                                        
+                  maxis=axis1 raxis=axis2 gaxis=axis3 inside=sum;                                                                                   
+run;                                                                                                                                    
+quit;
+
+*method: contingence table;
+
+
+proc freq data=fs;
+   tables area*State_Claim_Made / chisq;
+run;
+
+proc freq data=fc;
+tables area*Non_Statutory_Case_Filed/ chisq;
+run;
+
+proc freq data=fs;
+tables area*both_claim/ chisq;
+run;
+
+*method: anova table;
+proc anova data=fs;
+class area;
+model State_Claim_Made=area;
+run;
+proc anova data=fc;
+class area;
+model Non_Statutory_Case_Filed=area;
+run;
+proc anova data=fs;
+class area;
+model both_claim=area;
+run;
+
+* time ;
+*/ preprocess the time first;
+
+goptions reset=all;
+proc sql;
+create table state_claim as
+select distinct(area) as area,time, avg(State_Claim_Made) as state
+from fs
+group by area,time;
+
+proc sql;
+create table civil_claim as
+select distinct(area) as area, time, avg(Non_Statutory_Case_Filed) as civil
+from fc
+group by area,time;
+
+proc sql;
+create table both_claim as
+select distinct(area) as area,time, avg(both_claim)/count(area) as both_claim
+from fs
+group by area,time;
+
+proc sql;
+create table likelihood_claim as 
+select a.area,a.time, a.state,b.civil,c.both_claim
+from state_claim a, civil_claim b,both_claim c
+where a.area=b.area and a.area=c.area and a.time=b.time and a.time=c.time;
+run;
+
+proc gplot data= likelihood_claim;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("Likelihood of filling state claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot state*time=area/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+
+proc gplot data= likelihood_claim;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("Likelihood of filling civil right claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot civil*time=area/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+
+proc gplot data= likelihood_claim;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("Likelihood of filling both state and civil right claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot both_claim*time=area/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+
+
+proc sort data=fs;
+by area time;
+run;
+
+proc glm data=fs;
+class time area;
+model State_Claim_Made=time|area;
+run;
+
+proc glm data=fc;
+class time area;
+model Non_Statutory_Case_Filed=time|area;
+run;
+
+proc glm data=fs;
+class time area;
+model both_claim=time|area;
+run;
+
+*/trend;
+proc freq data=fs;
+ tables area*time*State_Claim_Made / trend measures cl;
+   test smdrc;
+   exact trend /maxtime=120;
+run;
+*/trend;
+proc freq data=fc;
+ tables area*time*Non_Statutory_Case_Filed / trend measures cl;
+   test smdrc;
+   exact trend /maxtime=120;
+run;
+*/trend;
+proc freq data=fs;
+ tables area*time*both_claim / trend measures cl;
+   test smdrc;
+   exact trend /maxtime=120;
+run;
+
+*/;
+proc corr data=fs pearson spearman;
+var Years_Lost State_Claim_Made;
+run;
+
+proc corr data=fc pearson spearman;
+var Years_Lost Non_Statutory_Case_Filed;
+run;
+
+proc corr data=fs pearson spearman;
+var Years_Lost both_claim;
+run;
+*;
+proc logistic data=fs PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class area /param=ref;
+   model State_Claim_Made(event='1')= area Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=area) / noobs ;
+run;
+
+proc logistic data=fs descending;
+   model State_Claim_Made=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+proc gplot data=lout;
+plot (State_Claim_Made pred lowerCL upperCL)*Years_Lost / overlay;
+run;
+*;
+proc logistic data=fc PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class area /param=ref;
+   model Non_Statutory_Case_Filed(event='1')= area Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=area) / noobs ;
+run;
+
+proc logistic data=fc descending;
+   model Non_Statutory_Case_Filed=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+proc gplot data=lout;
+plot (Non_Statutory_Case_Filed pred lowerCL upperCL)*Years_Lost / overlay;
+run;
+*;
+proc logistic data=fs PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class area /param=ref;
+   model both_claim(event='1')= area Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=area) / noobs ;
+run;
+
+proc logistic data=fs descending;
+   model both_claim=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+proc gplot data=lout;
+plot (both_claim pred lowerCL upperCL)*Years_Lost / overlay;
+run;

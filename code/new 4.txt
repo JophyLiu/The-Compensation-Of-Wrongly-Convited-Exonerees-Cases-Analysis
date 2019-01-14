@@ -1,0 +1,93 @@
+proc sort data=final out=q1;
+by Race Exonerated;
+run;
+
+data q1;
+set q1;
+keep Race State_Claim_Made Non_Statutory_Case_Filed State_Award Award Amount Amount_c Exonerated Years_Lost;
+run;
+
+data q1;
+set q1;
+if State_Claim_Made=. then State_Claim=0;
+run;
+
+data q1;
+set q1;
+if State_Claim_Made=1 and Non_Statutory_Case_Filed=1 then both_fill=1;
+else both_=0;
+run;
+
+data q1;
+set q1;
+if State_Award=2 then State_Award=0;
+run;
+
+data q1;
+set q1;
+if State_Award=1 and Award=1 then both_award=1;
+else both_award=0;
+run;
+
+data q1;
+set q1;
+if Amount_c=. then Amount_c=0;
+run;
+
+data q1;
+set q1;
+if Amount=. then Amount=0;
+run;
+
+data q1;
+set q1;
+amount_per_c=Amount_c/Years_Lost;
+run;
+data q1;
+set q1;
+amount_per=Amount/Years_Lost;
+run;
+data q1;
+set q1;
+if amount_per_c=. then amount_per_c=0;
+run;
+data q1;
+set q1;
+if amount_per=. then amount_per=0;
+run;
+
+data q1;
+set q1;
+length time $ 10;
+if Exonerated<=1990 then time= '<1990';
+run;
+
+data q1;
+set q1;
+if 1990<Exonerated<=1995 then time= '1990-1905';
+run;
+
+data q1;
+set q1;
+if 1995<Exonerated<=2000 then time= '1995-2000';
+run;
+
+data q1;
+set q1;
+if 2000<Exonerated<=2005 then time= '2000-2005';
+run;
+
+data q1;
+set q1;
+if 2005<Exonerated<=2010 then time= '2005-2010';
+run;
+data q1;
+set q1;
+if 2010<Exonerated<=2015 then time= '2010-2015';
+run;
+data q1;
+set q1;
+if Exonerated>2015 then time= '>2015';
+run;
+
+

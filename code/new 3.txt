@@ -1,0 +1,129 @@
+**********question 3***********;
+data q1;
+set final;
+keep Race Amount Amount_c Exonerated Years_Lost;
+run;
+data q1;
+set q1;
+if Amount_c=. then Amount_c=0;
+run;
+data q1;
+set q1;
+if Amount=. then Amount=0;
+run;
+data recovery;
+set q1;
+amount_per_c=Amount_c/Years_Lost;
+run;
+data recovery;
+set recovery;
+amount_per=Amount/Years_Lost;
+run;
+data recovery;
+set recovery;
+if amount_per_c=. then amount_per_c=0;
+run;
+data recovery;
+set recovery;
+if amount_per=. then amount_per=0;
+run;
+data recovery;
+set recovery;
+if Race='Asian' then delete;
+run;
+data recovery;
+set recovery;
+if Race='Other' then delete;
+run;
+data recovery;
+set recovery;
+if Race='Native American' then delete;
+run;
+proc anova data=recovery;
+class Race;
+model amount_per_c=Race;
+run;
+proc anova data=recovery;
+class Race;
+model amount_per=Race;
+run;
+proc sort data=recovery;
+by Exonerated;
+run;
+data recovery;
+set recovery;
+length time $ 10;
+if Exonerated<=1990 then time= '<1990';
+run;
+data recovery;
+set recovery;
+if 1990<Exonerated<=1995 then time= '1990-1905';
+run;
+data recovery;
+set recovery;
+if 1995<Exonerated<=2000 then time= '1995-2000';
+run;
+data recovery;
+set recovery;
+if 2000<Exonerated<=2005 then time= '2000-2005';
+run;
+data recovery;
+set recovery;
+if 2005<Exonerated<=2010 then time= '2005-2010';
+run;
+data recovery;
+set recovery;
+if 2010<Exonerated<=2015 then time= '2010-2015';
+run;
+data recovery;
+set recovery;
+if Exonerated>2015 then time= '>2015';
+run;
+
+goptions reset=all;
+proc sql;
+create table amount_state as
+select distinct(Race) as Race,time, avg(amount_per) as amount_state
+from recovery
+group by Race,time;
+proc sql;
+create table amount_civil as
+select distinct(Race) as Race,time, avg(amount_per_c) as amount_civil
+from recovery
+group by Race,time;
+proc glm data=recovery;
+class time Race;
+model amount_per=time|Race;
+run;
+proc glm data=recovery;
+class time Race;
+model amount_per_c=time|Race;
+run;
+proc gplot data= amount_state;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("The Amount of recovering state claim per year")
+order=(0 to 300000 by 20000);
+legend1 label=none value=(tick=1 "Black");
+plot amount_state*time=Race/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+proc gplot data= amount_civil;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("The Amount of recovering civil right per year")
+order=(0 to 300000 by 100000);
+legend1 label=none value=(tick=1 "Black");
+plot amount_civil*time=Race/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;

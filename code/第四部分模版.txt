@@ -1,0 +1,205 @@
+goptions reset=all;
+proc sql;
+create table state_claim as
+select distinct(Death_Penalty) as Death_Penalty, avg(State_Claim_Made) as state
+from fs
+group by Death_Penalty;
+
+proc sql;
+create table civil_claim as
+select distinct(Death_Penalty) as Death_Penalty, avg(Non_Statutory_Case_Filed) as civil
+from fc
+group by Death_Penalty;
+
+proc sql;
+create table both_claim as
+select distinct(Death_Penalty) as Death_Penalty, avg(both_claim) as both_claim
+from fs
+group by Death_Penalty;
+
+proc sql;
+create table likelihood_claim as 
+select a.Death_Penalty,a.state,b.civil,c.both_claim
+from state_claim a, civil_claim b,both_claim c
+where a.Death_Penalty=b.Death_Penalty and a.Death_Penalty=c.Death_Penalty;
+run;
+
+proc print data=likelihood_claim;
+run;
+
+
+
+*method: contingence table;
+
+
+proc freq data=fs;
+   tables Death_Penalty*State_Claim_Made / chisq;
+run;
+
+proc freq data=fc;
+tables Death_Penalty*Non_Statutory_Case_Filed/ chisq;
+run;
+
+proc freq data=fs;
+tables Death_Penalty*both_claim/ chisq;
+run;
+
+* time ;
+*/ preprocess the time first;
+
+goptions reset=all;
+proc sql;
+create table state_claim as
+select distinct(Death_Penalty) as Death_Penalty,time, avg(State_Claim_Made) as state
+from fs
+group by Death_Penalty,time;
+
+proc sql;
+create table civil_claim as
+select distinct(Death_Penalty) as Death_Penalty, time, avg(Non_Statutory_Case_Filed) as civil
+from fc
+group by Death_Penalty,time;
+
+proc sql;
+create table both_claim as
+select distinct(Death_Penalty) as Death_Penalty,time, avg(both_claim)/count(Death_Penalty) as both_claim
+from fs
+group by Death_Penalty,time;
+
+proc sql;
+create table likelihood_claim as 
+select a.Death_Penalty,a.time, a.state,b.civil,c.both_claim
+from state_claim a, civil_claim b,both_claim c
+where a.Death_Penalty=b.Death_Penalty and a.Death_Penalty=c.Death_Penalty and a.time=b.time and a.time=c.time;
+run;
+
+proc print data=likelihood_claim;
+run;
+
+
+proc gplot data= likelihood_claim;
+symbol1 interpol=join width=1 value=triangle c=steelblue;
+symbol2 interpol=join width=1 value=circle c=indigo;
+symbol3 interpol=join width=1 value=square c=orchid;
+symbol4 interpol=join width=1 value=dot c=red;
+axis1 label=none;
+axis2 label=("Likelihood of filling state claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot state*time=Death_Penalty/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+
+proc gplot data= likelihood_claim;
+symbol1 interpol=join width=1 value=triangle c=steelblue;
+symbol2 interpol=join width=1 value=circle c=indigo;
+symbol3 interpol=join width=1 value=square c=orchid;
+symbol4 interpol=join width=1 value=dot c=red;
+axis1 label=none;
+axis2 label=("Likelihood of filling civil right claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot civil*time=Death_Penalty/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+
+proc gplot data= likelihood_claim;
+symbol1 interpol=join width=1 value=triangle c=steelblue;
+symbol2 interpol=join width=1 value=circle c=indigo;
+symbol3 interpol=join width=1 value=square c=orchid;
+symbol4 interpol=join width=1 value=dot c=red;
+axis1 label=none;
+axis2 label=("Likelihood of filling both state and civil right claim")
+order=(0.14 to 0.64 by 0.02);;
+legend1 label=none value=(tick=1 "Black");
+plot both_claim*time=Death_Penalty/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
+run;
+quit;
+
+
+proc sort data=fs;
+by Death_Penalty time;
+run;
+
+proc glm data=fs;
+class time Death_Penalty;
+model State_Claim_Made=time|Death_Penalty;
+run;
+
+proc glm data=fc;
+class time Death_Penalty;
+model Non_Statutory_Case_Filed=time|Death_Penalty;
+run;
+
+proc glm data=fs;
+class time Death_Penalty;
+model both_claim=time|Death_Penalty;
+run;
+
+
+
+*/;
+proc corr data=fs pearson spearman;
+var Years_Lost State_Claim_Made;
+run;
+
+proc corr data=fc pearson spearman;
+var Years_Lost Non_Statutory_Case_Filed;
+run;
+
+proc corr data=fs pearson spearman;
+var Years_Lost both_claim;
+run;
+*;
+goptions reset=all;
+proc logistic data=fs PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class Death_Penalty /param=ref;
+   model State_Claim_Made(event='1')= Death_Penalty Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=Death_Penalty) / noobs ;
+run;
+goptions reset=all;
+proc logistic data=fs descending;
+   model State_Claim_Made=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+proc gplot data=lout;
+plot (State_Claim_Made pred lowerCL upperCL)*Years_Lost / overlay;
+run;
+*;
+proc logistic data=fc PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class Death_Penalty /param=ref;
+   model Non_Statutory_Case_Filed(event='1')= Death_Penalty Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=Death_Penalty) / noobs ;
+run;
+goptions reset=all;
+proc logistic data=fc descending;
+   model Non_Statutory_Case_Filed=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+proc gplot data=lout;
+plot (Non_Statutory_Case_Filed pred lowerCL upperCL)*Years_Lost / overlay;
+run;
+*;
+goptions reset=all;
+proc logistic data=fs PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class Death_Penalty /param=ref;
+   model both_claim(event='1')= Death_Penalty Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=Death_Penalty) / noobs ;
+run;
+goptions reset=all;
+proc logistic data=fs descending;
+   model both_claim=Years_Lost;
+   output out=lout p=pred l=lowerCL u=upperCL;
+run;
+proc gplot data=lout;
+plot (both_claim pred lowerCL upperCL)*Years_Lost / overlay;
+run;

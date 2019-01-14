@@ -1,0 +1,235 @@
+proc sort data=final out=q1;
+by State Exonerated;
+run;
+data q1;
+set q1;
+keep State No_Time State_Claim_Made Non_Statutory_Case_Filed Exonerated Years_Lost;
+run;
+
+data q2;
+set q1;
+if State_Claim_Made=. then delete;
+run;
+data q2;
+set q2;
+if No_Time =1 then delete;
+run;
+
+data state;
+set q2;
+if State_Claim_Made=1 and Non_Statutory_Case_Filed=0 then only_state=1;
+else only_state=0; 
+run;
+
+data q1;
+set q1;
+if State_Claim_Made=. then State_Claim_Made=0;
+run;
+
+data two_situation;
+set q1;
+if State_Claim_Made=0 and Non_Statutory_Case_Filed=1 then only_civil=1;
+else only_civil=0;
+if State_Claim_Made=1 and Non_Statutory_Case_Filed=1 then both_=1;
+else both_=0;
+run;
+
+**** To prove whether there are different between different State;
+****assumption: Cause we are not interest in the people who do not filling compensation, so in this situation, in order to avoid 
+the possible error of missing value, let set empty to be zero****;
+
+***the likelihood of filling compensation between State****;
+
+proc sql;
+create table only_state as
+select distinct(State) as State, sum(only_state)/count(State) as only_state
+from state
+group by State;
+
+proc sql;
+create table only_civil as
+select distinct(State) as State, sum(only_civil)/count(State) as only_civil
+from two_situation
+group by State;
+
+proc sql;
+create table both as
+select distinct(State) as State, sum(both_)/count(State) as both_
+from two_situation
+group by State;
+
+proc sql;
+create table likelihood as 
+select a.State,a.only_state,b.only_civil,c.both_
+from only_state a, only_civil b,both c
+where a.State=b.State and a.State=c.State;
+run;
+
+proc print data=likelihood;
+run;
+
+symbol1 interpol=join value=dot ;
+proc gplot data=likelihood;
+ plot only_state*State only_civil*State both_*State / overlay; 
+run;
+quit;
+
+*****analysis the group mean**********************************************************;
+proc anova data=state;
+class State;
+model only_state=State;
+run;
+proc anova data=two_situation;
+class State;
+model only_civil=State;
+run;
+proc anova data=two_situation;
+class State;
+model both=State;
+run;
+proc npar1way data=state wilcoxon;
+class State;
+var only_state;
+run;
+proc npar1way data=two_situation wilcoxon;
+class State;
+var only_civil;
+run;
+proc npar1way data=two_situation wilcoxon;
+class State;
+var both_;
+run;
+
+
+****relationship change over time**********************************************************;
+proc sort data=state;
+by State Exonerated;
+run;
+
+proc sort data=two_situation;
+by State Exonerated;
+run;
+
+
+proc glm data=state;
+class Exonerated State;
+model only_state=Exonerated|State;
+run;
+
+proc glm data=two_situation;
+class Exonerated State;
+model only_civil=Exonerated|State;
+run;
+
+proc glm data=two_situation;
+class Exonerated State;
+model both_=Exonerated|State;
+run;
+
+
+******the impact of time lost************************************************************;
+proc corr data=state pearson spearman;
+var Years_Lost only_state;
+run;
+
+proc corr data=two_situation pearson spearman;
+var Years_Lost only_civil;
+run;
+
+proc corr data=two_situation pearson spearman;
+var Years_Lost both_;
+run;
+
+proc glm data=state;
+class State;
+model only_state=Years_Lost;
+run;
+
+
+proc glm data=state;
+class State;
+model only_state=State | Years_Lost;
+run;
+
+proc logistic data=state PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class State /param=ref;
+   model only_state(event='1')=Years_Lost;
+   effectplot /noobs ;
+run;
+
+ods graphics on;
+proc logistic data=state PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class State /param=ref;
+   model only_state(event='1')= State Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=State) / noobs ;
+run;
+
+ods graphics on;
+proc gampl data=state plots seed=12345;
+class State;
+model only_state(event='1') = spline(Years_Lost)/dist=binary;
+run;
+
+*;
+
+proc glm data=two_situation;
+class State;
+model only_civil=Years_Lost;
+run;
+
+
+proc glm data=two_situation;
+class State;
+model only_civil=State | Years_Lost;
+run;
+
+proc logistic data=two_situation PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class State /param=ref;
+   model only_civil(event='1')=Years_Lost;
+   effectplot /noobs ;
+run;
+
+ods graphics on;
+proc logistic data=two_situation PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class State /param=ref;
+   model only_civil(event='1')= State Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=State) / noobs ;
+run;
+
+ods graphics on;
+proc gampl data=two_situation plots seed=12345;
+class State;
+model only_civil(event='1') = spline(Years_Lost)/dist=binary;
+run;
+
+*;
+
+proc glm data=two_situation;
+class State;
+model both_=Years_Lost;
+run;
+
+
+proc glm data=two_situation;
+class State;
+model both_=State | Years_Lost;
+run;
+
+proc logistic data=two_situation PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class State /param=ref;
+   model both_(event='1')=Years_Lost;
+   effectplot /noobs ;
+run;
+
+ods graphics on;
+proc logistic data=two_situation PLOTS(ONLY) = EFFECT(CLBAR SHOWOBS);
+   class State /param=ref;
+   model both_(event='1')= State Years_Lost;
+   effectplot slicefit(x=Years_Lost sliceby=State) / noobs ;
+run;
+
+ods graphics on;
+proc gampl data=two_situation plots seed=12345;
+class State;
+model both_(event='1') = spline(Years_Lost)/dist=binary;
+run;

@@ -1,0 +1,28 @@
+proc anova data=ac;
+class Crime;
+model amount_per_c=Crime;
+run;
+
+proc sql;
+create table amount_civil as
+select distinct(Crime) as Crime,time, avg(amount_per_c) as amount_civil
+from ac
+group by Crime,time;
+
+proc glm data=ac;
+class time Crime;
+model amount_per_c=time|Crime;
+run;
+
+proc gplot data= amount_civil;
+symbol1 interpol=join width=2 value=triangle c=steelblue;
+symbol2 interpol=join width=2 value=circle c=indigo;
+symbol3 interpol=join width=2 value=square c=orchid;
+axis1 label=none;
+axis2 label=("The Amount of recovering civil right per year")
+order=(0 to 300000 by 100000);
+legend1 label=none value=(tick=1 "Black");
+plot amount_civil*time=Crime/ 
+        haxis=axis1 hminor=0
+        vaxis=axis2 vminor=1
+        legend=legend1;
